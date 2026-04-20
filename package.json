@@ -1,0 +1,20 @@
+{
+  "name": "arcade-hub",
+  "version": "1.0.0",
+  "description": "19 Classic Arcade Games in HTML5 Canvas",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "deploy:netlify": "npx netlify-cli deploy --dir=. --prod",
+    "deploy:surge": "npx surge .",
+    "deploy:vercel": "npx vercel --prod"
+  },
+  "keywords": ["games", "arcade", "html5", "canvas", "javascript"],
+  "author": "Arcade Hub",
+  "license": "MIT",
+  "homepage": "https://arcade-engine.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/arcade-hub.git"
+  }
+}
