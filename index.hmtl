@@ -1,0 +1,2296 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>Arcade Engine</title>
+
+<style>
+body{margin:0;background:#09020f;color:white;font-family:Arial,Helvetica,sans-serif;overflow:auto;width:100%;height:100%;}
+canvas{display:block;margin:auto;background:#110a1f;max-width:100%;height:auto;position:relative;z-index:1;}
+
+body::before{
+content:'';
+position:fixed;top:0;left:0;width:100%;height:100%;
+background:radial-gradient(circle at 20% 20%, rgba(155,89,182,0.22), transparent 25%),
+radial-gradient(circle at 80% 15%, rgba(186,85,211,0.18), transparent 22%),
+radial-gradient(circle at 50% 80%, rgba(123,52,248,0.16), transparent 28%);
+pointer-events:none;
+z-index:0;
+}
+
+/* HOME SCREEN */
+#homeScreen{
+position:fixed;top:0;left:0;width:100%;height:100%;z-index:100;
+background: linear-gradient(135deg, #0b0415 0%, #19062f 50%, #280c43 100%);
+display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:40px;
+overflow-y:auto;overflow-x:hidden;
+backdrop-filter: blur(2px);
+}
+
+#homeScreen::after{
+content:'';
+position:absolute;inset:0;
+background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0) 50%, rgba(255,255,255,0.08));
+pointer-events:none;
+}
+
+#homeScreen.hidden{display:none;}
+
+.home-header{
+text-align:center;margin-bottom:20px;position:relative;z-index:2;padding:0 10px;
+}
+
+.home-title{
+font-size:4rem;font-weight:bold;
+background: linear-gradient(45deg, #b455f8, #8a2be2, #e843ff, #d96cff);
+background-size: 300% 300%;
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
+animation: gradientShift 3s ease infinite;
+margin:0;
+text-shadow: 0 0 30px rgba(182,92,255,0.35), 0 0 12px rgba(232,67,255,0.3);
+}
+
+@keyframes gradientShift {
+0% { background-position: 0% 50%; }
+50% { background-position: 100% 50%; }
+100% { background-position: 0% 50%; }
+}
+
+.home-subtitle{
+font-size:1.2rem;color:#c9b4f6;margin:10px 0 0 0;
+letter-spacing:0.05em;
+}
+
+.games-grid{
+display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+gap:20px;max-width:940px;width:100%;padding:0 20px 40px 20px;position:relative;z-index:2;pointer-events:auto;
+}
+
+.game-card{
+background: rgba(255,255,255,0.06);
+border: 1px solid rgba(167,92,255,0.28);
+box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05), 0 0 24px rgba(167,92,255,0.12);
+border-radius: 18px;
+padding: 24px;
+text-align: center;
+cursor: pointer;
+transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+backdrop-filter: blur(16px);
+position:relative;overflow:hidden;
+pointer-events:auto;
+}
+
+.game-card:hover{
+transform: translateY(-8px);
+border-color: #c87cff;
+box-shadow: 0 18px 40px rgba(200,124,255,0.25), inset 0 0 0 1px rgba(255,255,255,0.08);
+background: rgba(255,255,255,0.14);
+}
+
+.game-card:before{
+content:'';
+position:absolute;top:0;left:0;right:0;bottom:0;
+border-radius:18px;
+background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent 60%);
+opacity:0.6;
+pointer-events:none;
+z-index:-1;
+}
+
+.game-card{position:relative;overflow:hidden;}
+
+.game-icon{
+font-size:3.2rem;margin-bottom:12px;
+text-shadow: 0 0 12px rgba(200,124,255,0.45);
+}
+
+.game-title{
+font-size:1.25rem;font-weight:700;margin:0 0 8px 0;
+color:#f3e3ff;
+text-transform:uppercase;
+letter-spacing:0.04em;
+}
+
+.game-desc{
+font-size:0.95rem;color:#d1c2f6;margin:0;
+line-height:1.5;
+}
+
+.instructions{
+position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+text-align:center;color:#a8b9d3;font-size:0.92rem;
+line-height:1.5;
+}
+
+.instructions strong{color:#4ecdc4;}
+
+/* UI */
+#menu{
+position:absolute;top:0;left:0;width:100%;
+background:#000;padding:8px;z-index:10;
+display:none;
+}
+
+#menu.show{display:flex;}
+
+button{margin:3px;padding:6px;background:#1d4ed8;color:white;border:none;font-size:14px;}
+
+/* JOYSTICK */
+#joyBase{
+position:absolute;bottom:40px;left:30px;
+width:120px;height:120px;
+background:rgba(255,255,255,0.1);
+border-radius:50%;
+touch-action: none;
+user-select: none;
+-webkit-user-select: none;
+}
+
+#joyStick{
+position:absolute;bottom:80px;left:80px;
+width:50px;height:50px;
+background:rgba(255,255,255,0.4);
+border-radius:50%;
+touch-action: none;
+user-select: none;
+-webkit-user-select: none;
+transition: all 0.1s ease;
+}
+
+#action{
+position:absolute;bottom:60px;right:30px;
+width:90px;height:90px;
+border-radius:50%;
+background:red;
+color:white;
+border:none;
+font-weight:bold;
+touch-action: none;
+user-select: none;
+-webkit-user-select: none;
+transition: all 0.1s ease;
+font-size:14px;
+}
+
+#action:active {
+background: darkred;
+transform: scale(0.95);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+#joyBase {
+width: 100px;
+height: 100px;
+bottom: 30px;
+left: 20px;
+}
+
+#joyStick {
+width: 40px;
+height: 40px;
+bottom: 70px;
+left: 60px;
+}
+
+#action {
+width: 80px;
+height: 80px;
+bottom: 50px;
+right: 20px;
+font-size: 12px;
+}
+
+button {
+font-size: 12px;
+padding: 4px;
+}
+}
+
+@media (max-width: 480px) {
+#joyBase {
+width: 80px;
+height: 80px;
+bottom: 20px;
+left: 15px;
+}
+
+#joyStick {
+width: 30px;
+height: 30px;
+bottom: 55px;
+left: 45px;
+}
+
+#action {
+width: 70px;
+height: 70px;
+bottom: 35px;
+right: 15px;
+font-size: 10px;
+}
+
+#menu {
+padding: 4px;
+}
+
+button {
+font-size: 11px;
+padding: 3px;
+margin: 2px;
+}
+}
+</style>
+</head>
+
+<body>
+
+<div id="homeScreen">
+<div class="home-header">
+<h1 class="home-title">ARCADE HUB</h1>
+<p class="home-subtitle">Choose your game and start playing!</p>
+</div>
+
+<div class="games-grid">
+<div class="game-card" data-game="basketball">
+<div class="game-icon">🏀</div>
+<h3 class="game-title">Basketball</h3>
+<p class="game-desc">Shoot hoops and score points in this classic basketball game!</p>
+</div>
+
+<div class="game-card" data-game="football">
+<div class="game-icon">🏈</div>
+<h3 class="game-title">Football</h3>
+<p class="game-desc">Throw touchdowns and tackle your way to victory!</p>
+</div>
+
+<div class="game-card" data-game="racing">
+<div class="game-icon">🏁</div>
+<h3 class="game-title">Racing</h3>
+<p class="game-desc">Speed through tracks and compete for the fastest lap time!</p>
+</div>
+
+<div class="game-card" data-game="flappy">
+<div class="game-icon">🐦</div>
+<h3 class="game-title">Flappy Bird</h3>
+<p class="game-desc">Navigate through pipes in this addictive flying challenge!</p>
+</div>
+
+<div class="game-card" data-game="snake">
+<div class="game-icon">🐍</div>
+<h3 class="game-title">Snake</h3>
+<p class="game-desc">Grow your snake by eating food and avoid hitting walls!</p>
+</div>
+
+<div class="game-card" data-game="pong">
+<div class="game-icon">🏓</div>
+<h3 class="game-title">Pong</h3>
+<p class="game-desc">Classic paddle ball game - keep the ball in play!</p>
+</div>
+
+<div class="game-card" data-game="breakout">
+<div class="game-icon">🧱</div>
+<h3 class="game-title">Breakout</h3>
+<p class="game-desc">Break all the bricks with your bouncing ball!</p>
+</div>
+
+<div class="game-card" data-game="space">
+<div class="game-icon">🚀</div>
+<h3 class="game-title">Space Invaders</h3>
+<p class="game-desc">Defend Earth from alien invaders in this space shooter!</p>
+</div>
+
+<div class="game-card" data-game="asteroids">
+<div class="game-icon">☄️</div>
+<h3 class="game-title">Asteroids</h3>
+<p class="game-desc">Pilot your ship and blast incoming asteroids!</p>
+</div>
+
+<div class="game-card" data-game="frogger">
+<div class="game-icon">🐸</div>
+<h3 class="game-title">Frogger</h3>
+<p class="game-desc">Cross the road safely while avoiding traffic.</p>
+</div>
+
+<div class="game-card" data-game="dodge">
+<div class="game-icon">⚡</div>
+<h3 class="game-title">Dodge</h3>
+<p class="game-desc">Survive the falling obstacles for as long as you can.</p>
+</div>
+
+<div class="game-card" data-game="tetris">
+<div class="game-icon">🧩</div>
+<h3 class="game-title">Tetris</h3>
+<p class="game-desc">Arrange falling blocks to clear complete lines!</p>
+</div>
+
+<div class="game-card" data-game="pacman">
+<div class="game-icon">👻</div>
+<h3 class="game-title">Pac-Man</h3>
+<p class="game-desc">Eat dots while avoiding colorful ghosts!</p>
+</div>
+
+<div class="game-card" data-game="galaga">
+<div class="game-icon">🚀</div>
+<h3 class="game-title">Galaga</h3>
+<p class="game-desc">Shoot down alien invaders in formation!</p>
+</div>
+
+<div class="game-card" data-game="centipede">
+<div class="game-icon">🐛</div>
+<h3 class="game-title">Centipede</h3>
+<p class="game-desc">Defend against the descending centipede segments!</p>
+</div>
+
+<div class="game-card" data-game="missile">
+<div class="game-icon">🚀</div>
+<h3 class="game-title">Missile Command</h3>
+<p class="game-desc">Defend cities from incoming missile attacks!</p>
+</div>
+
+<div class="game-card" data-game="qix">
+<div class="game-icon">🌀</div>
+<h3 class="game-title">Qix</h3>
+<p class="game-desc">Claim territory while avoiding the Qix!</p>
+</div>
+
+<div class="game-card" data-game="arkanoid">
+<div class="game-icon">🎯</div>
+<h3 class="game-title">Arkanoid</h3>
+<p class="game-desc">Break all blocks with your bouncing ball!</p>
+</div>
+
+<div class="game-card" data-game="bubble">
+<div class="game-icon">🫧</div>
+<h3 class="game-title">Bubble Bobble</h3>
+<p class="game-desc">Match colored bubbles to clear the screen!</p>
+</div>
+<div class="game-icon">🚀</div>
+<h3 class="game-title">Missile Command</h3>
+<p class="game-desc">Defend cities from incoming missile attacks!</p>
+</div>
+
+<div class="game-card" onclick="Engine.setGame('qix')">
+<div class="game-icon">🌀</div>
+<h3 class="game-title">Qix</h3>
+<p class="game-desc">Claim territory while avoiding the Qix!</p>
+</div>
+
+<div class="game-card" onclick="Engine.setGame('arkanoid')">
+<div class="game-icon">🎯</div>
+<h3 class="game-title">Arkanoid</h3>
+<p class="game-desc">Break all blocks with your bouncing ball!</p>
+</div>
+
+<div class="game-card" onclick="Engine.setGame('bubble')">
+<div class="game-icon">🫧</div>
+<h3 class="game-title">Bubble Bobble</h3>
+<p class="game-desc">Match colored bubbles to clear the screen!</p>
+</div>
+</div>
+
+<div class="instructions">
+<strong>Touch Controls:</strong> Use virtual joystick and action button<br>
+<strong>Keyboard:</strong> WASD/Arrow keys + Space/Enter
+</div>
+</div>
+
+<div id="menu">
+<button onclick="Engine.goHome()">🏠 Home</button>
+<button onclick="Engine.setGame('basketball')">🏀 Basketball</button>
+<button onclick="Engine.setGame('football')">🏈 Football</button>
+<button onclick="Engine.setGame('racing')">🏁 Racing</button>
+<button onclick="Engine.setGame('flappy')">🐦 Flappy</button>
+<button onclick="Engine.setGame('snake')">🐍 Snake</button>
+<button onclick="Engine.setGame('pong')">🏓 Pong</button>
+<button onclick="Engine.setGame('breakout')">🧱 Breakout</button>
+<button onclick="Engine.setGame('space')">🚀 Space</button>
+<button onclick="Engine.setGame('asteroids')">☄️ Asteroids</button>
+<button onclick="Engine.setGame('frogger')">🐸 Frogger</button>
+<button onclick="Engine.setGame('dodge')">⚡ Dodge</button>
+<button onclick="Engine.setGame('tetris')">🧩 Tetris</button>
+<button onclick="Engine.setGame('pacman')">👻 Pac-Man</button>
+<button onclick="Engine.setGame('galaga')">🚀 Galaga</button>
+<button onclick="Engine.setGame('centipede')">🐛 Centipede</button>
+<button onclick="Engine.setGame('missile')">🚀 Missile Command</button>
+<button onclick="Engine.setGame('qix')">🌀 Qix</button>
+<button onclick="Engine.setGame('arkanoid')">🎯 Arkanoid</button>
+<button onclick="Engine.setGame('bubble')">🫧 Bubble Bobble</button>
+<p style="font-size:12px;margin:8px 0;color:#ccc;">
+Use joystick or WASD/Arrow keys. Space/Enter for action.
+</p>
+</div>
+
+<canvas id="c" width="400" height="500"></canvas>
+
+<div id="joyBase"></div>
+<div id="joyStick"></div>
+<button id="action">ACTION</button>
+
+<script>
+
+/**************************************************
+🧠 AI ANNOUNCER MODULE (RESTORED)
+**************************************************/
+const AI = {
+queue:[],
+speak(text,p=1,r=1){
+if(!('speechSynthesis' in window)) return; // Check if speech is supported
+this.queue.push({text,p,r});
+this.play();
+},
+play(){
+if(this.speaking) return;
+this.speaking=true;
+this.next();
+},
+next(){
+if(this.queue.length===0){this.speaking=false;return;}
+
+let item=this.queue.shift();
+try {
+let u=new SpeechSynthesisUtterance(item.text);
+u.pitch=item.p;
+u.rate=item.r;
+
+u.onend=()=>this.next();
+speechSynthesis.speak(u);
+} catch(e) {
+this.next(); // Skip if speech fails
+}
+}
+};
+
+/**************************************************
+📺 ESPN BROADCAST SYSTEM (RESTORED)
+**************************************************/
+const ESPN = {
+scoreBug:{x:-300,home:0,away:0,dx:0},
+lower:null,
+mode:"live",
+
+update(){
+this.scoreBug.x += (10-this.scoreBug.x)*0.1;
+},
+
+draw(ctx){
+ctx.fillStyle="rgba(0,0,0,0.85)";
+ctx.fillRect(this.scoreBug.x,10,220,50);
+
+ctx.fillStyle="white";
+ctx.fillText("YOU "+Engine.score, this.scoreBug.x+10,30);
+ctx.fillText("CPU "+Engine.cpu, this.scoreBug.x+10,50);
+}
+};
+
+/**************************************************
+🎮 ENGINE CORE
+**************************************************/
+const Engine = {
+
+game:"basketball",
+score:0,
+cpu:0,
+actionPressed:false,
+
+player:{x:200,y:400,vy:0},
+ball:{x:200,y:380,dx:0,dy:0,shoot:false},
+
+setGame(g){
+this.game=g;
+this.reset();
+document.getElementById('homeScreen').classList.add('hidden');
+document.getElementById('menu').classList.add('show');
+AI.speak(g + " started!", 1, 1);
+},
+
+reset(){
+this.score=0;
+this.cpu=0;
+this.actionPressed=false;
+this.scored=false;
+this.obstacles=[];
+
+let centerX = canvas.width / 2;
+let centerY = canvas.height / 2;
+let bottomY = canvas.height - 100;
+
+if(this.game === "basketball" || this.game === "football"){
+this.player={x:centerX,y:bottomY,vy:0};
+this.ball={x:centerX,y:bottomY-20,dx:0,dy:0,shoot:false};
+} else if(this.game === "racing"){
+this.player={x:centerX,y:bottomY,vy:0};
+} else if(this.game === "flappy"){
+this.player={x:canvas.width*0.2,y:centerY,vy:0};
+} else if(this.game === "snake"){
+this.snakeBody = [{x: centerX, y: centerY}];
+this.snakeDir = {x: 10, y: 0};
+this.food = {x: Math.floor(Math.random() * (canvas.width/10)) * 10, y: Math.floor(Math.random() * (canvas.height/10)) * 10};
+} else if(this.game === "pong"){
+this.player={x:20,y:centerY-25};
+this.cpu={x:canvas.width-30,y:centerY-25};
+this.ball={x:centerX,y:centerY,dx:3,dy:2};
+} else if(this.game === "breakout"){
+this.player={x:centerX-25,y:bottomY};
+this.bricks = [];
+for(let i=0; i<8; i++){
+for(let j=0; j<6; j++){
+this.bricks.push({x:i*50+25, y:j*20+50, alive:true});
+}
+}
+this.ball={x:centerX,y:bottomY-20,dx:2,dy:-2};
+} else if(this.game === "space"){
+this.player={x:centerX,y:bottomY};
+this.bullets = [];
+this.enemies = [];
+for(let i=0; i<5; i++){
+this.enemies.push({x:i*80+50, y:50, alive:true});
+}
+} else if(this.game === "asteroids"){
+this.player={x:centerX,y:canvas.height-30};
+this.bullets = [];
+this.asteroids = [];
+for(let i=0; i<6; i++){
+this.asteroids.push({x: Math.random() * (canvas.width-30) + 15, y: Math.random() * canvas.height * 0.5 + 20, dx: (Math.random()-0.5) * 1.4, dy: Math.random() * 0.7 + 0.4, radius: Math.random() * 10 + 12});
+}
+} else if(this.game === "frogger"){
+this.player={x:centerX,y:canvas.height-30};
+this.cars = [];
+this.frogGoal = 20;
+for(let lane=0; lane<4; lane++){
+let dir = lane % 2 === 0 ? 1 : -1;
+for(let i=0; i<4; i++){
+this.cars.push({x: i * 120 + (dir === 1 ? 0 : 60), y: canvas.height - 80 - lane * 60, dx: dir * (1.5 + lane * 0.25), width: 60, height: 30});
+}
+}
+} else if(this.game === "dodge"){
+this.player={x:centerX,y:canvas.height-25};
+this.blocks = [];
+this.blockTimer = 0;
+} else if(this.game === "tetris"){
+this.tetrisBoard = Array(20).fill().map(() => Array(10).fill(0));
+this.currentPiece = this.getRandomPiece();
+this.nextPiece = this.getRandomPiece();
+this.pieceX = 3;
+this.pieceY = 0;
+this.dropTimer = 0;
+this.dropSpeed = 30;
+} else if(this.game === "pacman"){
+this.pacman = {x: centerX, y: canvas.height - 60, dir: 0};
+this.ghosts = [
+{x: centerX - 40, y: centerY, dx: -1, dy: 0, color: 'red'},
+{x: centerX + 40, y: centerY, dx: 1, dy: 0, color: 'pink'},
+{x: centerX, y: centerY - 40, dx: 0, dy: -1, color: 'cyan'},
+{x: centerX, y: centerY + 40, dx: 0, dy: 1, color: 'orange'}
+];
+this.dots = [];
+for(let x=20; x<canvas.width-20; x+=20){
+for(let y=60; y<canvas.height-80; y+=20){
+if(Math.random() < 0.7) this.dots.push({x, y});
+}
+}
+} else if(this.game === "galaga"){
+this.ship = {x: centerX, y: canvas.height - 40};
+this.bullets = [];
+this.enemies = [];
+for(let row=0; row<3; row++){
+for(let col=0; col<8; col++){
+this.enemies.push({x: col*40 + 40, y: row*30 + 30, alive: true, dx: 0.5});
+}
+}
+} else if(this.game === "centipede"){
+this.centipede = [];
+for(let i=0; i<10; i++){
+this.centipede.push({x: i*20 + 100, y: 50, dx: 1, dy: 0});
+}
+this.mushrooms = [];
+for(let i=0; i<20; i++){
+this.mushrooms.push({x: Math.random() * (canvas.width-20) + 10, y: Math.random() * (canvas.height*0.6) + 100});
+}
+this.player = {x: centerX, y: canvas.height - 30};
+} else if(this.game === "missile"){
+this.cities = [50, canvas.width-50];
+this.missiles = [];
+this.explosions = [];
+this.incoming = [];
+this.launcher = {x: centerX, y: canvas.height - 20};
+} else if(this.game === "qix"){
+this.qix = {x: centerX, y: centerY, dx: 2, dy: 1};
+this.trail = [];
+this.player = {x: 20, y: canvas.height - 20};
+this.percentage = 0;
+} else if(this.game === "arkanoid"){
+this.paddle = {x: centerX - 30, y: canvas.height - 30, width: 60};
+this.ball = {x: centerX, y: canvas.height - 50, dx: 2, dy: -2};
+this.blocks = [];
+for(let row=0; row<6; row++){
+for(let col=0; col<10; col++){
+this.blocks.push({x: col*38 + 10, y: row*15 + 50, alive: true, color: ['red','orange','yellow','green','blue','purple'][row]});
+}
+}
+} else if(this.game === "bubble"){
+this.bubbles = [];
+this.player = {x: centerX, y: canvas.height - 30};
+this.nextBubble = Math.floor(Math.random() * 6);
+this.grid = Array(12).fill().map(() => Array(8).fill(null));
+for(let i=0; i<5; i++){
+for(let j=0; j<8; j++){
+if(Math.random() < 0.3) this.grid[i][j] = Math.floor(Math.random() * 6);
+}
+}
+}
+
+goHome(){
+this.game = null;
+document.getElementById('homeScreen').classList.remove('hidden');
+document.getElementById('menu').classList.remove('show');
+},
+
+updateInput(joy){
+if(!this.player) return;
+this.player.x += joy.dx * 3;
+this.player.y += joy.dy * 3;
+this.player.x = Math.max(0, Math.min(canvas.width-20, this.player.x));
+this.player.y = Math.max(0, Math.min(canvas.height-20, this.player.y));
+},
+
+update(){
+if(!this.game) return; // Don't update if no game selected
+
+this.updateInput(Input.joy);
+
+if(this.game==="basketball") this.basketball();
+if(this.game==="football") this.football();
+if(this.game==="racing") this.racing();
+if(this.game==="flappy") this.flappy();
+if(this.game==="snake") this.snake();
+if(this.game==="pong") this.pong();
+if(this.game==="breakout") this.breakout();
+if(this.game==="space") this.space();
+if(this.game==="asteroids") this.asteroids();
+if(this.game==="frogger") this.frogger();
+if(this.game==="dodge") this.dodge();
+if(this.game==="tetris") this.tetris();
+if(this.game==="pacman") this.pacman();
+if(this.game==="galaga") this.galaga();
+if(this.game==="centipede") this.centipede();
+if(this.game==="missile") this.missile();
+if(this.game==="qix") this.qix();
+if(this.game==="arkanoid") this.arkanoid();
+if(this.game==="bubble") this.bubble();
+},
+
+/***********************
+🏀 BASKETBALL
+***********************/
+basketball(){
+
+let p=this.player;
+let b=this.ball;
+
+if(b.shoot){
+b.x+=b.dx;
+b.y+=b.dy;
+}
+
+if(b.y<70){
+this.score++;
+AI.speak("BASKET! SCORE!",1.2,1);
+b.shoot=false;
+b.x=canvas.width/2;b.y=canvas.height-120;
+}
+
+},
+
+/***********************
+🏈 FOOTBALL
+***********************/
+football(){
+let p = this.player;
+let b = this.ball;
+
+// Ball physics
+if(b.shoot){
+b.x += b.dx;
+b.y += b.dy;
+b.dy += 0.1; // gravity
+}
+
+// Ball hits ground
+if(b.y > canvas.height - 20 && b.shoot){
+b.shoot = false;
+b.x = canvas.width/2;
+b.y = canvas.height - 120;
+b.dx = 0;
+b.dy = 0;
+}
+
+// Score when ball reaches end zone
+if(b.x > canvas.width - 50 && b.shoot){
+this.score++;
+AI.speak("Touchdown!", 1.3, 1);
+b.shoot = false;
+b.x = canvas.width/2;
+b.y = canvas.height - 120;
+b.dx = 0;
+b.dy = 0;
+}
+},
+
+/***********************
+🏁 RACING
+***********************/
+racing(){
+this.player.x += Input.joy.dx * 4; // steering
+this.player.y -= 3; // forward movement
+
+// Keep player on track (rough track boundaries)
+this.player.x = Math.max(canvas.width*0.125, Math.min(canvas.width*0.875, this.player.x));
+
+// Lap completion
+if(this.player.y < -50){
+this.score++;
+this.player.y = canvas.height + 50;
+AI.speak("Lap " + this.score + " complete!", 1, 1);
+}
+
+// Simple obstacles (cars)
+if(!this.obstacles) this.obstacles = [];
+if(Math.random() < 0.01){
+this.obstacles.push({x: Math.random() * (canvas.width*0.75) + canvas.width*0.125, y: -50});
+}
+
+// Move obstacles
+this.obstacles.forEach(obs => obs.y += 2);
+
+// Remove off-screen obstacles
+this.obstacles = this.obstacles.filter(obs => obs.y < canvas.height + 50);
+
+// Collision detection
+this.obstacles.forEach(obs => {
+if(Math.abs(obs.x - this.player.x) < 20 && Math.abs(obs.y - this.player.y) < 20){
+this.player.y = canvas.height - 100;
+this.player.x = canvas.width / 2;
+AI.speak("Crash!", 0.7, 0.8);
+}
+});
+},
+
+/***********************
+🐦 FLAPPY
+***********************/
+flappy(){
+let p = this.player;
+
+// Initialize obstacles if not exists
+if(!this.pipes) this.pipes = [];
+if(!this.pipeGap) this.pipeGap = canvas.height * 0.3;
+if(!this.pipeWidth) this.pipeWidth = canvas.width * 0.15;
+
+// Generate new pipes
+if(this.pipes.length === 0 || this.pipes[this.pipes.length-1].x < canvas.width * 0.7){
+let gapY = Math.random() * (canvas.height * 0.4) + canvas.height * 0.2;
+this.pipes.push({
+x: canvas.width,
+gapY: gapY,
+passed: false
+});
+}
+
+// Move pipes
+this.pipes.forEach(pipe => pipe.x -= 2);
+
+// Remove off-screen pipes
+this.pipes = this.pipes.filter(pipe => pipe.x > -this.pipeWidth);
+
+// Player physics
+p.y += p.vy;
+p.vy += 0.4; // gravity
+
+// Jump when action button pressed
+if(this.actionPressed){
+p.vy = -8; // jump force
+this.actionPressed = false;
+AI.speak("Flap!", 1.5, 1.2);
+}
+
+// Ground and ceiling collision
+if(p.y > canvas.height - 20 || p.y < 0){
+this.reset();
+AI.speak("Game over!", 0.8, 0.9);
+return;
+}
+
+// Pipe collision detection
+this.pipes.forEach(pipe => {
+if(p.x + 10 > pipe.x && p.x < pipe.x + this.pipeWidth){
+if(p.y < pipe.gapY || p.y + 10 > pipe.gapY + this.pipeGap){
+this.reset();
+AI.speak("Crash!", 0.7, 0.8);
+return;
+}
+}
+
+// Score when passing pipe
+if(!pipe.passed && p.x > pipe.x + this.pipeWidth){
+pipe.passed = true;
+this.score++;
+AI.speak("Point!", 1.2, 1);
+}
+});
+}
+},
+
+/***********************
+🐍 SNAKE
+***********************/
+snake(){
+if(!this.snakeBody || !this.snakeDir || !this.food){
+this.reset();
+return;
+}
+
+let head = {x: this.snakeBody[0].x + this.snakeDir.x, y: this.snakeBody[0].y + this.snakeDir.y};
+
+// Wall collision
+if(head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height){
+this.reset();
+AI.speak("Game over!", 0.8, 0.9);
+return;
+}
+
+// Self collision
+for(let segment of this.snakeBody){
+if(head.x === segment.x && head.y === segment.y){
+this.reset();
+AI.speak("Game over!", 0.8, 0.9);
+return;
+}
+}
+
+// Food collision
+if(Math.abs(head.x - this.food.x) < 10 && Math.abs(head.y - this.food.y) < 10){
+this.score++;
+this.snakeBody.push({...this.snakeBody[this.snakeBody.length-1]});
+this.food = {x: Math.floor(Math.random() * (canvas.width/10)) * 10, y: Math.floor(Math.random() * (canvas.height/10)) * 10};
+AI.speak("Nom!", 1.2, 1);
+} else {
+this.snakeBody.pop();
+}
+
+this.snakeBody.unshift(head);
+
+// Direction change with joystick
+if(Input.joy.dx > 0.5 && this.snakeDir.x === 0) this.snakeDir = {x: 10, y: 0};
+if(Input.joy.dx < -0.5 && this.snakeDir.x === 0) this.snakeDir = {x: -10, y: 0};
+if(Input.joy.dy > 0.5 && this.snakeDir.y === 0) this.snakeDir = {x: 0, y: 10};
+if(Input.joy.dy < -0.5 && this.snakeDir.y === 0) this.snakeDir = {x: 0, y: -10};
+},
+
+/***********************
+🏓 PONG
+***********************/
+pong(){
+if(!this.ball || !this.player || !this.cpu){
+this.reset();
+return;
+}
+
+// Ball movement
+this.ball.x += this.ball.dx;
+this.ball.y += this.ball.dy;
+
+// Ball collision with top/bottom
+if(this.ball.y <= 0 || this.ball.y >= canvas.height - 10){
+this.ball.dy = -this.ball.dy;
+}
+
+// Ball collision with paddles
+if(this.ball.x <= 30 && this.ball.y >= this.player.y && this.ball.y <= this.player.y + 50){
+this.ball.dx = -this.ball.dx;
+this.ball.x = 30;
+AI.speak("Pong!", 1, 1);
+}
+
+if(this.ball.x >= canvas.width - 40 && this.ball.y >= this.cpu.y && this.ball.y <= this.cpu.y + 50){
+this.ball.dx = -this.ball.dx;
+this.ball.x = canvas.width - 40;
+}
+
+// Score
+if(this.ball.x < 0){
+this.cpu++;
+this.ball.x = canvas.width/2;
+this.ball.y = canvas.height/2;
+this.ball.dx = 3;
+AI.speak("Point for CPU!", 0.9, 0.9);
+}
+
+if(this.ball.x > canvas.width){
+this.score++;
+this.ball.x = canvas.width/2;
+this.ball.y = canvas.height/2;
+this.ball.dx = -3;
+AI.speak("Point for you!", 1.1, 1.1);
+}
+
+// Player movement
+this.player.y += Input.joy.dy * 4;
+this.player.y = Math.max(0, Math.min(canvas.height - 50, this.player.y));
+
+// CPU AI
+this.cpu.y += (this.ball.y - this.cpu.y) * 0.05;
+this.cpu.y = Math.max(0, Math.min(canvas.height - 50, this.cpu.y));
+},
+
+/***********************
+🧱 BREAKOUT
+***********************/
+breakout(){
+if(!this.ball || !this.player || !this.bricks){
+this.reset();
+return;
+}
+
+// Ball movement
+this.ball.x += this.ball.dx;
+this.ball.y += this.ball.dy;
+
+// Ball collision with walls
+if(this.ball.x <= 0 || this.ball.x >= canvas.width - 10) this.ball.dx = -this.ball.dx;
+if(this.ball.y <= 0) this.ball.dy = -this.ball.dy;
+
+// Ball collision with paddle
+if(this.ball.y >= this.player.y - 10 && this.ball.x >= this.player.x && this.ball.x <= this.player.x + 50){
+this.ball.dy = -this.ball.dy;
+this.ball.y = this.player.y - 10;
+}
+
+// Ball falls off screen
+if(this.ball.y > canvas.height){
+this.reset();
+AI.speak("Game over!", 0.8, 0.9);
+return;
+}
+
+// Ball collision with bricks
+this.bricks.forEach(brick => {
+if(brick.alive && this.ball.x >= brick.x - 25 && this.ball.x <= brick.x + 25 &&
+   this.ball.y >= brick.y - 10 && this.ball.y <= brick.y + 10){
+brick.alive = false;
+this.ball.dy = -this.ball.dy;
+this.score += 10;
+AI.speak("Brick destroyed!", 1, 1);
+}
+});
+
+// Check win condition
+if(this.bricks.every(brick => !brick.alive)){
+this.score += 100;
+AI.speak("Level complete!", 1.2, 1);
+this.reset();
+}
+
+// Player movement
+this.player.x += Input.joy.dx * 5;
+this.player.x = Math.max(0, Math.min(canvas.width - 50, this.player.x));
+},
+
+/***********************
+🚀 SPACE
+***********************/
+space(){
+if(!this.player || !this.bullets || !this.enemies){
+this.reset();
+return;
+}
+
+// Player movement
+this.player.x += Input.joy.dx * 4;
+this.player.x = Math.max(0, Math.min(canvas.width - 20, this.player.x));
+
+// Shoot bullets
+if(this.actionPressed && (!this.lastShot || Date.now() - this.lastShot > 200)){
+this.bullets.push({x: this.player.x + 10, y: this.player.y});
+this.lastShot = Date.now();
+this.actionPressed = false;
+AI.speak("Pew!", 1.5, 1.3);
+}
+
+// Move bullets
+this.bullets.forEach(bullet => bullet.y -= 5);
+this.bullets = this.bullets.filter(bullet => bullet.y > 0);
+
+// Move enemies
+if(Math.random() < 0.005){
+this.enemies.forEach(enemy => {
+if(enemy.alive && Math.random() < 0.1){
+this.enemies.push({x: enemy.x, y: enemy.y + 30, alive: true});
+}
+});
+}
+
+this.enemies.forEach(enemy => {
+enemy.y += 0.5;
+if(enemy.y > canvas.height) enemy.alive = false;
+});
+
+// Collision detection
+this.bullets.forEach(bullet => {
+this.enemies.forEach(enemy => {
+if(enemy.alive && Math.abs(bullet.x - enemy.x) < 15 && Math.abs(bullet.y - enemy.y) < 15){
+enemy.alive = false;
+bullet.y = -10; // Remove bullet
+this.score += 20;
+AI.speak("Enemy destroyed!", 1, 1);
+}
+});
+});
+
+// Check if enemies reach bottom
+this.enemies.forEach(enemy => {
+if(enemy.alive && enemy.y > canvas.height - 50){
+this.reset();
+AI.speak("Game over!", 0.8, 0.9);
+}
+});
+
+this.enemies = this.enemies.filter(enemy => enemy.alive);
+this.actionPressed = false;
+},
+
+/***********************
+☄️ ASTEROIDS
+***********************/
+asteroids(){
+if(!this.player || !this.bullets || !this.asteroids){
+this.reset();
+return;
+}
+
+this.player.x += Input.joy.dx * 3;
+this.player.x = Math.max(0, Math.min(canvas.width-20, this.player.x));
+
+this.bullets.forEach(bullet => bullet.y += bullet.dy);
+this.bullets = this.bullets.filter(bullet => bullet.y > -10);
+
+this.asteroids.forEach(asteroid => {
+asteroid.x += asteroid.dx;
+asteroid.y += asteroid.dy;
+if(asteroid.x < 0 || asteroid.x > canvas.width) asteroid.dx *= -1;
+if(asteroid.y > canvas.height + asteroid.radius) {
+asteroid.y = -asteroid.radius;
+asteroid.x = Math.random() * canvas.width;
+}
+});
+
+this.asteroids.forEach(asteroid => {
+this.bullets.forEach(bullet => {
+let dist = Math.hypot(asteroid.x - bullet.x, asteroid.y - bullet.y);
+if(dist < asteroid.radius){
+asteroid.x = Math.random() * canvas.width;
+asteroid.y = -asteroid.radius;
+bullet.y = -20;
+this.score += 10;
+AI.speak("Blast!", 1, 1);
+}
+});
+
+if(Math.hypot(asteroid.x - this.player.x - 5, asteroid.y - this.player.y - 5) < asteroid.radius + 6){
+this.reset();
+AI.speak("Ship destroyed!", 0.8, 0.9);
+}
+});
+},
+
+/***********************
+🐸 FROGGER
+***********************/
+frogger(){
+if(!this.player || !this.cars){
+this.reset();
+return;
+}
+
+this.player.x += Input.joy.dx * 4;
+this.player.y += Input.joy.dy * 4;
+this.player.x = Math.max(0, Math.min(canvas.width-20, this.player.x));
+this.player.y = Math.max(0, Math.min(canvas.height-20, this.player.y));
+
+this.cars.forEach(car => {
+car.x += car.dx;
+if(car.x > canvas.width + 80) car.x = -car.width - 10;
+if(car.x < -car.width - 80) car.x = canvas.width + 10;
+});
+
+this.cars.forEach(car => {
+if(this.player.x < car.x + car.width && this.player.x + 20 > car.x &&
+this.player.y < car.y + car.height && this.player.y + 20 > car.y){
+this.reset();
+AI.speak("Ouch!", 0.8, 0.9);
+}
+});
+
+if(this.player.y < this.frogGoal){
+this.score += 5;
+AI.speak("Safe!", 1, 1);
+this.reset();
+}
+},
+
+/***********************
+⚡ DODGE
+***********************/
+dodge(){
+if(!this.player || !this.blocks){
+this.reset();
+return;
+}
+
+this.player.x += Input.joy.dx * 4;
+this.player.x = Math.max(0, Math.min(canvas.width-20, this.player.x));
+
+this.blockTimer += 1;
+if(this.blockTimer > 24){
+this.blockTimer = 0;
+this.blocks.push({x: Math.random() * (canvas.width - 30), y: -20, dy: 2 + Math.random() * 2});
+}
+
+this.blocks.forEach(block => block.y += block.dy);
+this.blocks = this.blocks.filter(block => block.y < canvas.height + 20);
+
+this.blocks.forEach(block => {
+if(this.player.x < block.x + 20 && this.player.x + 20 > block.x &&
+this.player.y < block.y + 20 && this.player.y + 20 > block.y){
+this.reset();
+AI.speak("Hit!", 0.8, 0.9);
+}
+});
+
+this.score += 0.1;
+},
+
+/***********************
+🧩 TETRIS
+***********************/
+getRandomPiece(){
+const pieces = [
+[[1,1,1,1]], // I
+[[1,1],[1,1]], // O
+[[0,1,0],[1,1,1]], // T
+[[1,0,0],[1,1,1]], // J
+[[0,0,1],[1,1,1]], // L
+[[1,1,0],[0,1,1]], // S
+[[0,1,1],[1,1,0]]  // Z
+];
+return pieces[Math.floor(Math.random() * pieces.length)];
+},
+
+tetris(){
+if(!this.tetrisBoard || !this.currentPiece){
+this.reset();
+return;
+}
+
+this.dropTimer += 1;
+if(this.dropTimer >= this.dropSpeed){
+this.dropTimer = 0;
+this.pieceY += 1;
+if(this.checkCollision()){
+this.pieceY -= 1;
+this.placePiece();
+this.clearLines();
+this.currentPiece = this.nextPiece;
+this.nextPiece = this.getRandomPiece();
+this.pieceX = 3;
+this.pieceY = 0;
+if(this.checkCollision()){
+this.reset();
+AI.speak("Game over!", 0.8, 0.9);
+}
+}
+}
+
+if(Input.joy.dx > 0.5 && !this.checkCollision(this.pieceX + 1, this.pieceY)) this.pieceX += 1;
+if(Input.joy.dx < -0.5 && !this.checkCollision(this.pieceX - 1, this.pieceY)) this.pieceX -= 1;
+if(Input.joy.dy > 0.5 && !this.checkCollision(this.pieceX, this.pieceY + 1)) this.pieceY += 1;
+},
+
+checkCollision(x = this.pieceX, y = this.pieceY){
+for(let py=0; py<this.currentPiece.length; py++){
+for(let px=0; px<this.currentPiece[py].length; px++){
+if(this.currentPiece[py][px]){
+let bx = x + px;
+let by = y + py;
+if(bx < 0 || bx >= 10 || by >= 20 || (by >= 0 && this.tetrisBoard[by][bx])) return true;
+}
+}
+}
+return false;
+},
+
+placePiece(){
+for(let py=0; py<this.currentPiece.length; py++){
+for(let px=0; px<this.currentPiece[py].length; px++){
+if(this.currentPiece[py][px]){
+this.tetrisBoard[this.pieceY + py][this.pieceX + px] = 1;
+}
+}
+}
+},
+
+clearLines(){
+for(let y=19; y>=0; y--){
+if(this.tetrisBoard[y].every(cell => cell)){
+this.tetrisBoard.splice(y, 1);
+this.tetrisBoard.unshift(Array(10).fill(0));
+this.score += 100;
+AI.speak("Line clear!", 1, 1);
+y++; // Check same line again
+}
+}
+},
+
+/***********************
+👻 PAC-MAN
+***********************/
+pacman(){
+if(!this.pacman || !this.ghosts || !this.dots){
+this.reset();
+return;
+}
+
+this.pacman.x += Input.joy.dx * 2;
+this.pacman.y += Input.joy.dy * 2;
+this.pacman.x = Math.max(10, Math.min(canvas.width-30, this.pacman.x));
+this.pacman.y = Math.max(50, Math.min(canvas.height-70, this.pacman.y));
+
+this.ghosts.forEach(ghost => {
+ghost.x += ghost.dx * 1.5;
+ghost.y += ghost.dy * 1.5;
+if(ghost.x < 10 || ghost.x > canvas.width-30) ghost.dx *= -1;
+if(ghost.y < 50 || ghost.y > canvas.height-70) ghost.dy *= -1;
+});
+
+this.dots = this.dots.filter(dot => {
+if(Math.abs(this.pacman.x - dot.x) < 15 && Math.abs(this.pacman.y - dot.y) < 15){
+this.score += 10;
+AI.speak("Nom!", 1.5, 1);
+return false;
+}
+return true;
+});
+
+this.ghosts.forEach(ghost => {
+if(Math.abs(this.pacman.x - ghost.x) < 20 && Math.abs(this.pacman.y - ghost.y) < 20){
+this.reset();
+AI.speak("Caught!", 0.8, 0.9);
+}
+});
+
+if(this.dots.length === 0){
+this.score += 1000;
+AI.speak("Level complete!", 1.2, 1);
+this.reset();
+}
+},
+
+/***********************
+🚀 GALAGA
+***********************/
+galaga(){
+if(!this.ship || !this.bullets || !this.enemies){
+this.reset();
+return;
+}
+
+this.ship.x += Input.joy.dx * 3;
+this.ship.x = Math.max(20, Math.min(canvas.width-40, this.ship.x));
+
+if(this.actionPressed && (!this.lastShot || Date.now() - this.lastShot > 300)){
+this.bullets.push({x: this.ship.x + 10, y: this.ship.y});
+this.lastShot = Date.now();
+AI.speak("Pew!", 1.5, 1.3);
+this.actionPressed = false;
+}
+
+this.bullets.forEach(bullet => bullet.y -= 4);
+this.bullets = this.bullets.filter(bullet => bullet.y > 0);
+
+this.enemies.forEach(enemy => {
+enemy.x += enemy.dx;
+if(enemy.x < 20 || enemy.x > canvas.width-40) enemy.dx *= -1;
+});
+
+this.bullets.forEach(bullet => {
+this.enemies.forEach(enemy => {
+if(enemy.alive && Math.abs(bullet.x - enemy.x) < 15 && Math.abs(bullet.y - enemy.y) < 15){
+enemy.alive = false;
+bullet.y = -10;
+this.score += 50;
+AI.speak("Enemy down!", 1, 1);
+}
+});
+});
+
+this.enemies = this.enemies.filter(enemy => enemy.alive);
+
+if(this.enemies.length === 0){
+this.score += 500;
+AI.speak("Wave complete!", 1.2, 1);
+this.reset();
+}
+},
+
+/***********************
+🐛 CENTIPEDE
+***********************/
+centipede(){
+if(!this.centipede || !this.mushrooms || !this.player){
+this.reset();
+return;
+}
+
+this.player.x += Input.joy.dx * 3;
+this.player.x = Math.max(0, Math.min(canvas.width-20, this.player.x));
+
+if(this.actionPressed && (!this.lastShot || Date.now() - this.lastShot > 200)){
+this.bullets = this.bullets || [];
+this.bullets.push({x: this.player.x + 10, y: this.player.y});
+this.lastShot = Date.now();
+AI.speak("Zap!", 1.5, 1.2);
+this.actionPressed = false;
+}
+
+if(this.bullets) this.bullets.forEach(bullet => bullet.y -= 3);
+if(this.bullets) this.bullets = this.bullets.filter(bullet => bullet.y > 0);
+
+this.centipede.forEach(segment => {
+segment.x += segment.dx;
+if(segment.x < 10 || segment.x > canvas.width-30) segment.dx *= -1;
+});
+
+if(this.bullets) this.bullets.forEach(bullet => {
+this.centipede.forEach(segment => {
+if(Math.abs(bullet.x - segment.x) < 10 && Math.abs(bullet.y - segment.y) < 10){
+bullet.y = -10;
+this.score += 20;
+AI.speak("Hit!", 1, 1);
+}
+});
+});
+
+this.centipede.forEach(segment => {
+if(Math.abs(this.player.x - segment.x) < 15 && Math.abs(this.player.y - segment.y) < 15){
+this.reset();
+AI.speak("Bitten!", 0.8, 0.9);
+}
+});
+},
+
+/***********************
+🚀 MISSILE COMMAND
+***********************/
+missile(){
+if(!this.launcher || !this.cities){
+this.reset();
+return;
+}
+
+this.launcher.x += Input.joy.dx * 4;
+this.launcher.x = Math.max(20, Math.min(canvas.width-40, this.launcher.x));
+
+if(this.actionPressed && (!this.lastShot || Date.now() - this.lastShot > 150)){
+this.missiles.push({x: this.launcher.x, y: this.launcher.y, tx: Input.joy.dx * 100 + this.launcher.x, ty: 50});
+this.lastShot = Date.now();
+AI.speak("Launch!", 1.2, 1);
+this.actionPressed = false;
+}
+
+if(Math.random() < 0.02){
+this.incoming.push({x: Math.random() * canvas.width, y: 0, tx: Math.random() * canvas.width, ty: canvas.height});
+}
+
+this.missiles.forEach(missile => {
+missile.x += (missile.tx - missile.x) * 0.05;
+missile.y += (missile.ty - missile.y) * 0.05;
+if(Math.abs(missile.x - missile.tx) < 5 && Math.abs(missile.y - missile.ty) < 5){
+this.explosions.push({x: missile.tx, y: missile.ty, radius: 0, maxRadius: 40});
+missile.y = -10;
+}
+});
+
+this.incoming.forEach(missile => {
+missile.x += (missile.tx - missile.x) * 0.02;
+missile.y += (missile.ty - missile.y) * 0.02;
+});
+
+this.explosions.forEach(explosion => {
+explosion.radius += 2;
+if(explosion.radius > explosion.maxRadius) explosion.radius = -1;
+});
+
+this.missiles = this.missiles.filter(missile => missile.y > -10);
+this.explosions = this.explosions.filter(explosion => explosion.radius !== -1);
+
+this.incoming.forEach(missile => {
+this.explosions.forEach(explosion => {
+if(Math.abs(missile.x - explosion.x) < explosion.radius && Math.abs(missile.y - explosion.y) < explosion.radius){
+missile.y = -10;
+this.score += 10;
+}
+});
+});
+
+this.incoming = this.incoming.filter(missile => missile.y < canvas.height + 10);
+
+if(this.incoming.some(missile => missile.y > canvas.height - 30)){
+this.reset();
+AI.speak("City destroyed!", 0.8, 0.9);
+}
+},
+
+/***********************
+🌀 QIX
+***********************/
+qix(){
+if(!this.qix || !this.player){
+this.reset();
+return;
+}
+
+this.player.x += Input.joy.dx * 3;
+this.player.y += Input.joy.dy * 3;
+this.player.x = Math.max(10, Math.min(canvas.width-30, this.player.x));
+this.player.y = Math.max(10, Math.min(canvas.height-30, this.player.y));
+
+this.qix.x += this.qix.dx;
+this.qix.y += this.qix.dy;
+if(this.qix.x < 20 || this.qix.x > canvas.width-40) this.qix.dx *= -1;
+if(this.qix.y < 20 || this.qix.y > canvas.height-40) this.qix.dy *= -1;
+
+if(Math.abs(this.player.x - this.qix.x) < 20 && Math.abs(this.player.y - this.qix.y) < 20){
+this.reset();
+AI.speak("Caught!", 0.8, 0.9);
+}
+
+if(this.actionPressed){
+this.trail.push({x: this.player.x, y: this.player.y});
+this.actionPressed = false;
+}
+
+this.trail.forEach(point => {
+if(Math.abs(this.qix.x - point.x) < 15 && Math.abs(this.qix.y - point.y) < 15){
+this.reset();
+AI.speak("Trail broken!", 0.8, 0.9);
+}
+});
+
+this.percentage += 0.001;
+if(this.percentage >= 0.75){
+this.score += 1000;
+AI.speak("Area claimed!", 1.2, 1);
+this.reset();
+}
+},
+
+/***********************
+🎯 ARKANOID
+***********************/
+arkanoid(){
+if(!this.paddle || !this.ball || !this.blocks){
+this.reset();
+return;
+}
+
+this.paddle.x += Input.joy.dx * 4;
+this.paddle.x = Math.max(0, Math.min(canvas.width - this.paddle.width, this.paddle.x));
+
+this.ball.x += this.ball.dx;
+this.ball.y += this.ball.dy;
+
+if(this.ball.x <= 0 || this.ball.x >= canvas.width - 10) this.ball.dx *= -1;
+if(this.ball.y <= 0) this.ball.dy *= -1;
+
+if(this.ball.y >= this.paddle.y - 10 && this.ball.x >= this.paddle.x && this.ball.x <= this.paddle.x + this.paddle.width){
+this.ball.dy = -Math.abs(this.ball.dy);
+this.ball.y = this.paddle.y - 10;
+}
+
+if(this.ball.y > canvas.height){
+this.reset();
+AI.speak("Ball lost!", 0.8, 0.9);
+return;
+}
+
+this.blocks.forEach(block => {
+if(block.alive && this.ball.x >= block.x && this.ball.x <= block.x + 35 &&
+this.ball.y >= block.y && this.ball.y <= block.y + 12){
+block.alive = false;
+this.ball.dy *= -1;
+this.score += 10;
+AI.speak("Block!", 1, 1);
+}
+});
+
+if(this.blocks.every(block => !block.alive)){
+this.score += 500;
+AI.speak("Level complete!", 1.2, 1);
+this.reset();
+}
+},
+
+/***********************
+🫧 BUBBLE BOBBLE
+***********************/
+bubble(){
+if(!this.player || !this.bubbles || !this.grid){
+this.reset();
+return;
+}
+
+this.player.x += Input.joy.dx * 3;
+this.player.x = Math.max(0, Math.min(canvas.width-20, this.player.x));
+
+if(this.actionPressed && (!this.lastShot || Date.now() - this.lastShot > 250)){
+this.bubbles.push({x: this.player.x + 10, y: this.player.y, color: this.nextBubble, dx: Input.joy.dx * 2, dy: -3});
+this.nextBubble = Math.floor(Math.random() * 6);
+this.lastShot = Date.now();
+AI.speak("Bubble!", 1.3, 1.1);
+this.actionPressed = false;
+}
+
+this.bubbles.forEach(bubble => {
+bubble.x += bubble.dx;
+bubble.y += bubble.dy;
+bubble.dy += 0.1;
+
+if(bubble.x < 10 || bubble.x > canvas.width-30) bubble.dx *= -1;
+if(bubble.y < 10) bubble.dy *= -1;
+
+let gridX = Math.floor(bubble.x / 40);
+let gridY = Math.floor(bubble.y / 30);
+
+if(gridX >= 0 && gridX < 8 && gridY >= 0 && gridY < 12 && this.grid[gridY][gridX] === null){
+this.grid[gridY][gridX] = bubble.color;
+bubble.y = -10;
+this.score += 20;
+AI.speak("Pop!", 1.2, 1);
+}
+});
+
+this.bubbles = this.bubbles.filter(bubble => bubble.y < canvas.height + 10);
+},
+
+/**************************************************
+🕹️ INPUT SYSTEM
+**************************************************/
+const Input = {joy:{dx:0,dy:0}, activeTouches: new Map(), keys:{}};
+
+let base = document.getElementById("joyBase");
+let stick = document.getElementById("joyStick");
+let actionBtn = document.getElementById("action");
+
+// Keyboard input handling
+document.addEventListener('keydown', (e) => {
+Input.keys[e.key.toLowerCase()] = true;
+
+// Update joystick with keyboard
+if(e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') Input.joy.dy = -1;
+if(e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') Input.joy.dy = 1;
+if(e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') Input.joy.dx = -1;
+if(e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') Input.joy.dx = 1;
+
+// Action button
+if(e.key === ' ' || e.key === 'Enter') {
+Engine.actionPressed = true;
+e.preventDefault();
+}
+
+// Escape to go home
+if(e.key === 'Escape') {
+Engine.goHome();
+}
+});
+
+document.addEventListener('keyup', (e) => {
+Input.keys[e.key.toLowerCase()] = false;
+
+// Reset joystick when keys released
+if(e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'w' || e.key === 'W' || e.key === 's' || e.key === 'S') {
+Input.joy.dy = 0;
+}
+if(e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'a' || e.key === 'A' || e.key === 'd' || e.key === 'D') {
+Input.joy.dx = 0;
+}
+});
+
+// Joystick touch handling
+base.addEventListener("touchstart", (e) => {
+e.preventDefault();
+if (e.touches.length > 0) {
+let touch = e.touches[0];
+Input.activeTouches.set('joystick', touch.identifier);
+updateJoystick(touch);
+}
+});
+
+base.addEventListener("touchmove", (e) => {
+e.preventDefault();
+let joystickTouch = null;
+for (let touch of e.touches) {
+if (Input.activeTouches.get('joystick') === touch.identifier) {
+joystickTouch = touch;
+break;
+}
+}
+if (joystickTouch) {
+updateJoystick(joystickTouch);
+}
+});
+
+base.addEventListener("touchend", (e) => {
+e.preventDefault();
+let joystickTouch = null;
+for (let touch of e.changedTouches) {
+if (Input.activeTouches.get('joystick') === touch.identifier) {
+joystickTouch = touch;
+break;
+}
+}
+if (joystickTouch) {
+Input.activeTouches.delete('joystick');
+resetJoystick();
+}
+});
+
+function updateJoystick(touch) {
+let r = base.getBoundingClientRect();
+let centerX = r.left + r.width / 2;
+let centerY = r.top + r.height / 2;
+
+let deltaX = touch.clientX - centerX;
+let deltaY = touch.clientY - centerY;
+let distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+let maxDistance = 40; // Maximum joystick movement
+if (distance > maxDistance) {
+deltaX = (deltaX / distance) * maxDistance;
+deltaY = (deltaY / distance) * maxDistance;
+}
+
+Input.joy.dx = deltaX / maxDistance * 2;
+Input.joy.dy = deltaY / maxDistance * 2;
+
+stick.style.left = (80 + deltaX) + "px";
+stick.style.top = (80 + deltaY) + "px";
+}
+
+function resetJoystick() {
+Input.joy.dx = 0;
+Input.joy.dy = 0;
+stick.style.left = "80px";
+stick.style.top = "80px";
+}
+
+// Only prevent default on game controls, NOT on home screen
+document.addEventListener('touchstart', (e) => {
+// Only block on joystick and action button, allow home screen scrolling
+if ((e.target === base || e.target === actionBtn) && Engine.game) {
+e.preventDefault();
+}
+}, { passive: false });
+
+document.addEventListener('touchmove', (e) => {
+// Only block on joystick during gameplay, allow scrolling on home screen
+if ((e.target === base) && Engine.game) {
+e.preventDefault();
+}
+}, { passive: false });
+
+document.addEventListener('touchend', (e) => {
+if ((e.target === base || e.target === actionBtn) && Engine.game) {
+e.preventDefault();
+}
+}, { passive: false });
+
+
+/**************************************************
+🎮 GAME CARD CLICK HANDLERS
+**************************************************/
+// Simple, reliable game card handler for mobile and desktop
+document.querySelectorAll('.game-card').forEach(card => {
+card.addEventListener('click', (e) => {
+let game = card.dataset.game;
+if(game) Engine.setGame(game);
+});
+
+card.addEventListener('touchend', (e) => {
+e.preventDefault();
+let game = card.dataset.game;
+if(game) Engine.setGame(game);
+}, { passive: false });
+});
+
+/**************************************************
+🎮 ACTION BUTTON
+**************************************************/
+actionBtn.addEventListener("touchstart", (e) => {
+e.preventDefault();
+actionBtn.style.background = "darkred";
+actionBtn.style.transform = "scale(0.95)";
+
+if(Engine.game==="basketball"){
+Engine.ball.shoot=true;
+Engine.ball.dx=2;
+Engine.ball.dy=-4;
+AI.speak("Shot taken!",1,1);
+}
+
+if(Engine.game==="football"){
+Engine.score++;
+AI.speak("Touchdown!",1.3,1);
+}
+
+if(Engine.game==="flappy"){
+Engine.actionPressed = true;
+}
+
+if(Engine.game==="snake"){
+// Change direction for snake
+if(Input.joy.dx > 0.5 && Engine.snakeDir.x === 0) Engine.snakeDir = {x: 10, y: 0};
+if(Input.joy.dx < -0.5 && Engine.snakeDir.x === 0) Engine.snakeDir = {x: -10, y: 0};
+if(Input.joy.dy > 0.5 && Engine.snakeDir.y === 0) Engine.snakeDir = {x: 0, y: 10};
+if(Input.joy.dy < -0.5 && Engine.snakeDir.y === 0) Engine.snakeDir = {x: 0, y: -10};
+}
+
+if(Engine.game==="space"){
+Engine.actionPressed = true;
+}
+if(Engine.game==="asteroids"){
+Engine.bullets.push({x: Engine.player.x + 8, y: Engine.player.y, dy: -6});
+AI.speak("Pew!", 1.2, 1.1);
+}
+if(Engine.game==="dodge"){
+Engine.player.x += Input.joy.dx * 12;
+Engine.player.x = Math.max(0, Math.min(canvas.width-20, Engine.player.x));
+AI.speak("Dash!", 1, 1);
+}
+if(Engine.game==="tetris"){
+// Rotate piece
+let rotated = Engine.currentPiece[0].map((_, i) => Engine.currentPiece.map(row => row[i]).reverse());
+if(!Engine.checkCollision(Engine.pieceX, Engine.pieceY, rotated)){
+Engine.currentPiece = rotated;
+}
+AI.speak("Rotate!", 1, 1);
+}
+if(Engine.game==="pacman"){
+Engine.actionPressed = true;
+}
+if(Engine.game==="galaga"){
+Engine.actionPressed = true;
+}
+if(Engine.game==="centipede"){
+Engine.actionPressed = true;
+}
+if(Engine.game==="missile"){
+Engine.actionPressed = true;
+}
+if(Engine.game==="qix"){
+Engine.actionPressed = true;
+}
+if(Engine.game==="arkanoid"){
+Engine.actionPressed = true;
+}
+if(Engine.game==="bubble"){
+Engine.actionPressed = true;
+}
+});
+
+actionBtn.addEventListener("touchend", (e) => {
+e.preventDefault();
+actionBtn.style.background = "red";
+actionBtn.style.transform = "scale(1)";
+});
+
+actionBtn.addEventListener("touchcancel", (e) => {
+e.preventDefault();
+actionBtn.style.background = "red";
+actionBtn.style.transform = "scale(1)";
+});
+
+/**************************************************
+🎨 RENDER ENGINE
+**************************************************/
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
+
+// Handle canvas sizing for different devices
+function resizeCanvas() {
+let maxWidth = Math.min(window.innerWidth - 20, 400);
+let maxHeight = Math.min(window.innerHeight - 120, 500);
+canvas.width = maxWidth;
+canvas.height = maxHeight;
+
+// Adjust game coordinates for different canvas sizes
+if (Engine.game) {
+Engine.reset();
+}
+}
+
+window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', () => {
+setTimeout(resizeCanvas, 100);
+});
+
+resizeCanvas();
+
+function render(){
+if(!Engine.game){
+ctx.clearRect(0,0,canvas.width,canvas.height);
+return; // Don't render game elements on home screen
+}
+
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+ESPN.update();
+
+/* background */
+if(Engine.game === "racing"){
+ctx.fillStyle="#2d1b69"; // track background
+ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.fillStyle="#4a5568"; // road
+ctx.fillRect(canvas.width*0.125,0,canvas.width*0.75,canvas.height);
+ctx.fillStyle="#ffffff"; // lane markings
+for(let i=0; i<canvas.height; i+=50){
+ctx.fillRect(canvas.width/2-5,i,10,25);
+}
+} else if(Engine.game === "frogger"){
+ctx.fillStyle="#070b1e";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.fillStyle="#0f7d46"; // goal zone
+ctx.fillRect(0,10,canvas.width,40);
+ctx.fillStyle="#2a205d";
+for(let i=0; i<4; i++){
+ctx.fillRect(0, canvas.height-80-i*60-30, canvas.width, 60);
+}
+} else if(Engine.game === "asteroids"){
+ctx.fillStyle="#04030b";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+for(let i=0; i<100; i+=20){
+ctx.fillStyle="rgba(255,255,255,0.08)";
+ctx.fillRect(i, (i*3+canvas.width) % canvas.height, 1, 1);
+}
+} else if(Engine.game === "dodge"){
+ctx.fillStyle="#190522";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.fillStyle="rgba(255,255,255,0.04)";
+for(let x=0; x<canvas.width; x+=40){
+ctx.fillRect(x, 0, 1, canvas.height);
+}
+} else if(Engine.game === "tetris"){
+ctx.fillStyle="#1a202c";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.fillStyle="#2d3748";
+ctx.fillRect(40,40,220,420);
+} else if(Engine.game === "pacman"){
+ctx.fillStyle="#1a1a2a";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+} else if(Engine.game === "galaga"){
+ctx.fillStyle="#0a0a14";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+} else if(Engine.game === "centipede"){
+ctx.fillStyle="#0d1b2a";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+} else if(Engine.game === "missile"){
+ctx.fillStyle="#000814";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+} else if(Engine.game === "qix"){
+ctx.fillStyle="#0a0a0a";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+} else if(Engine.game === "arkanoid"){
+ctx.fillStyle="#1a1a2a";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+} else if(Engine.game === "bubble"){
+ctx.fillStyle="#0f0f23";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+} else {
+ctx.fillStyle="#14532d";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+}
+
+/* racing obstacles */
+if(Engine.game === "racing" && Engine.obstacles){
+ctx.fillStyle="red";
+Engine.obstacles.forEach(obs => {
+ctx.fillRect(obs.x-10, obs.y-10, 20, 20);
+});
+}
+
+/* frogger cars */
+if(Engine.game === "frogger" && Engine.cars){
+ctx.fillStyle="#f97316";
+Engine.cars.forEach(car => {
+ctx.fillRect(car.x, car.y, car.width, car.height);
+});
+}
+
+/* dodge blocks */
+if(Engine.game === "dodge" && Engine.blocks){
+ctx.fillStyle="#f472b6";
+Engine.blocks.forEach(block => {
+ctx.fillRect(block.x, block.y, 20, 20);
+});
+}
+
+/* asteroids field */
+if(Engine.game === "asteroids" && Engine.asteroids){
+ctx.fillStyle="#999";
+Engine.asteroids.forEach(ast => {
+ctx.beginPath();
+ctx.arc(ast.x, ast.y, ast.radius, 0, Math.PI * 2);
+ctx.fill();
+});
+}
+
+/* player */
+if(Engine.game === "frogger") ctx.fillStyle="#7c3aed";
+else if(Engine.game === "dodge") ctx.fillStyle="#38bdf8";
+else if(Engine.game === "asteroids") ctx.fillStyle="#c084fc";
+else ctx.fillStyle="blue";
+ctx.fillRect(Engine.player.x,Engine.player.y,10,10);
+
+if(Engine.game === "asteroids" && Engine.bullets){
+ctx.fillStyle="#facc15";
+Engine.bullets.forEach(bullet => {
+ctx.fillRect(bullet.x, bullet.y, 2, 8);
+});
+}
+
+/* ball for basketball and football */
+if((Engine.game === "basketball" || Engine.game === "football") && Engine.ball){
+ctx.fillStyle="orange";
+ctx.fillRect(Engine.ball.x,Engine.ball.y,6,6);
+}
+
+/* flappy pipes */
+if(Engine.game === "flappy" && Engine.pipes){
+ctx.fillStyle="green";
+Engine.pipes.forEach(pipe => {
+let gapY = pipe.gapY;
+let gap = Engine.pipeGap || 150;
+let width = Engine.pipeWidth || 60;
+
+// Top pipe
+ctx.fillRect(pipe.x, 0, width, gapY);
+// Bottom pipe
+ctx.fillRect(pipe.x, gapY + gap, width, canvas.height - (gapY + gap));
+});
+}
+
+/* snake rendering */
+if(Engine.game === "snake" && Engine.snakeBody && Engine.food){
+ctx.fillStyle="green";
+Engine.snakeBody.forEach(segment => {
+ctx.fillRect(segment.x, segment.y, 10, 10);
+});
+
+ctx.fillStyle="red";
+ctx.fillRect(Engine.food.x, Engine.food.y, 10, 10);
+}
+
+/* pong rendering */
+if(Engine.game === "pong" && Engine.player && Engine.cpu && Engine.ball){
+// Draw paddles
+ctx.fillStyle="white";
+ctx.fillRect(Engine.player.x, Engine.player.y, 10, 50);
+ctx.fillRect(Engine.cpu.x, Engine.cpu.y, 10, 50);
+
+// Draw ball
+ctx.fillRect(Engine.ball.x, Engine.ball.y, 10, 10);
+
+// Draw center line
+ctx.setLineDash([5, 5]);
+ctx.beginPath();
+ctx.moveTo(canvas.width/2, 0);
+ctx.lineTo(canvas.width/2, canvas.height);
+ctx.strokeStyle="white";
+ctx.stroke();
+ctx.setLineDash([]);
+}
+
+/* breakout rendering */
+if(Engine.game === "breakout" && Engine.bricks && Engine.player && Engine.ball){
+ctx.fillStyle="red";
+Engine.bricks.forEach(brick => {
+if(brick.alive){
+ctx.fillRect(brick.x-25, brick.y-10, 50, 20);
+}
+});
+
+ctx.fillStyle="white";
+ctx.fillRect(Engine.player.x, Engine.player.y, 50, 10);
+
+ctx.fillRect(Engine.ball.x, Engine.ball.y, 10, 10);
+}
+
+/* space rendering */
+if(Engine.game === "space" && Engine.player && Engine.bullets && Engine.enemies){
+ctx.fillStyle="blue";
+ctx.fillRect(Engine.player.x, Engine.player.y, 20, 20);
+
+ctx.fillStyle="yellow";
+Engine.bullets.forEach(bullet => {
+ctx.fillRect(bullet.x, bullet.y, 2, 8);
+});
+
+ctx.fillStyle="red";
+Engine.enemies.forEach(enemy => {
+if(enemy.alive){
+ctx.fillRect(enemy.x, enemy.y, 15, 15);
+}
+});
+}
+
+/* tetris rendering */
+if(Engine.game === "tetris" && Engine.tetrisBoard && Engine.currentPiece){
+ctx.fillStyle="#2d3748";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+for(let y=0; y<20; y++){
+for(let x=0; x<10; x++){
+if(Engine.tetrisBoard[y][x]){
+ctx.fillStyle="#4a5568";
+ctx.fillRect(x*20+50, y*20+50, 18, 18);
+}
+}
+}
+
+for(let py=0; py<Engine.currentPiece.length; py++){
+for(let px=0; px<Engine.currentPiece[py].length; px++){
+if(Engine.currentPiece[py][px]){
+ctx.fillStyle="#68d391";
+ctx.fillRect((Engine.pieceX+px)*20+50, (Engine.pieceY+py)*20+50, 18, 18);
+}
+}
+}
+}
+
+/* pacman rendering */
+if(Engine.game === "pacman" && Engine.pacman && Engine.ghosts && Engine.dots){
+ctx.fillStyle="#1a1a2a";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+ctx.fillStyle="yellow";
+ctx.beginPath();
+ctx.arc(Engine.pacman.x+10, Engine.pacman.y+10, 10, 0, Math.PI*2);
+ctx.fill();
+
+Engine.ghosts.forEach(ghost => {
+ctx.fillStyle=ghost.color;
+ctx.fillRect(ghost.x, ghost.y, 20, 20);
+});
+
+ctx.fillStyle="white";
+Engine.dots.forEach(dot => {
+ctx.beginPath();
+ctx.arc(dot.x+5, dot.y+5, 3, 0, Math.PI*2);
+ctx.fill();
+});
+}
+
+/* galaga rendering */
+if(Engine.game === "galaga" && Engine.ship && Engine.bullets && Engine.enemies){
+ctx.fillStyle="#0a0a14";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+ctx.fillStyle="blue";
+ctx.fillRect(Engine.ship.x, Engine.ship.y, 20, 20);
+
+ctx.fillStyle="yellow";
+Engine.bullets.forEach(bullet => {
+ctx.fillRect(bullet.x, bullet.y, 2, 8);
+});
+
+ctx.fillStyle="red";
+Engine.enemies.forEach(enemy => {
+if(enemy.alive){
+ctx.fillRect(enemy.x, enemy.y, 15, 15);
+}
+});
+}
+
+/* centipede rendering */
+if(Engine.game === "centipede" && Engine.centipede && Engine.mushrooms && Engine.player){
+ctx.fillStyle="#0d1b2a";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+ctx.fillStyle="green";
+Engine.centipede.forEach(segment => {
+ctx.fillRect(segment.x, segment.y, 15, 15);
+});
+
+ctx.fillStyle="brown";
+Engine.mushrooms.forEach(mushroom => {
+ctx.fillRect(mushroom.x, mushroom.y, 10, 10);
+});
+
+ctx.fillStyle="white";
+ctx.fillRect(Engine.player.x, Engine.player.y, 20, 20);
+
+if(Engine.bullets) Engine.bullets.forEach(bullet => {
+ctx.fillStyle="yellow";
+ctx.fillRect(bullet.x, bullet.y, 2, 8);
+});
+}
+
+/* missile command rendering */
+if(Engine.game === "missile" && Engine.launcher && Engine.cities){
+ctx.fillStyle="#000814";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+ctx.fillStyle="green";
+Engine.cities.forEach(city => {
+ctx.fillRect(city-10, canvas.height-30, 20, 20);
+});
+
+ctx.fillStyle="white";
+ctx.fillRect(Engine.launcher.x-5, Engine.launcher.y-5, 10, 10);
+
+ctx.fillStyle="yellow";
+Engine.missiles.forEach(missile => {
+ctx.fillRect(missile.x-1, missile.y-1, 2, 2);
+});
+
+ctx.fillStyle="red";
+Engine.incoming.forEach(missile => {
+ctx.fillRect(missile.x-1, missile.y-1, 2, 2);
+});
+
+ctx.fillStyle="orange";
+Engine.explosions.forEach(explosion => {
+if(explosion.radius > 0){
+ctx.beginPath();
+ctx.arc(explosion.x, explosion.y, explosion.radius, 0, Math.PI*2);
+ctx.fill();
+}
+});
+}
+
+/* qix rendering */
+if(Engine.game === "qix" && Engine.qix && Engine.player){
+ctx.fillStyle="#0a0a0a";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+ctx.strokeStyle="white";
+ctx.lineWidth=2;
+ctx.strokeRect(10,10,canvas.width-20,canvas.height-20);
+
+ctx.fillStyle="red";
+ctx.fillRect(Engine.qix.x, Engine.qix.y, 15, 15);
+
+ctx.fillStyle="blue";
+ctx.fillRect(Engine.player.x, Engine.player.y, 20, 20);
+
+ctx.strokeStyle="green";
+ctx.lineWidth=3;
+ctx.beginPath();
+Engine.trail.forEach((point, i) => {
+if(i===0) ctx.moveTo(point.x+10, point.y+10);
+else ctx.lineTo(point.x+10, point.y+10);
+});
+ctx.stroke();
+
+ctx.fillStyle="white";
+ctx.fillText("Claimed: "+Math.floor(Engine.percentage*100)+"%", 20, 30);
+}
+
+/* arkanoid rendering */
+if(Engine.game === "arkanoid" && Engine.paddle && Engine.ball && Engine.blocks){
+ctx.fillStyle="#1a1a2a";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+ctx.fillStyle="white";
+ctx.fillRect(Engine.paddle.x, Engine.paddle.y, Engine.paddle.width, 10);
+ctx.fillRect(Engine.ball.x, Engine.ball.y, 10, 10);
+
+Engine.blocks.forEach(block => {
+if(block.alive){
+ctx.fillStyle=block.color;
+ctx.fillRect(block.x, block.y, 35, 12);
+}
+});
+}
+
+/* bubble bobble rendering */
+if(Engine.game === "bubble" && Engine.player && Engine.bubbles && Engine.grid){
+ctx.fillStyle="#0f0f23";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+const colors = ['red','orange','yellow','green','blue','purple'];
+Engine.grid.forEach((row, y) => {
+row.forEach((cell, x) => {
+if(cell !== null){
+ctx.fillStyle=colors[cell];
+ctx.beginPath();
+ctx.arc(x*40+20, y*30+15, 12, 0, Math.PI*2);
+ctx.fill();
+}
+});
+});
+
+ctx.fillStyle="white";
+ctx.fillRect(Engine.player.x, Engine.player.y, 20, 20);
+
+Engine.bubbles.forEach(bubble => {
+ctx.fillStyle=colors[bubble.color];
+ctx.beginPath();
+ctx.arc(bubble.x, bubble.y, 8, 0, Math.PI*2);
+ctx.fill();
+});
+
+ctx.fillStyle=colors[Engine.nextBubble];
+ctx.beginPath();
+ctx.arc(Engine.player.x+25, Engine.player.y+10, 6, 0, Math.PI*2);
+ctx.fill();
+}
+
+/* ESPN overlay */
+ESPN.draw(ctx);
+
+/* HUD */
+ctx.fillStyle="white";
+ctx.fillText("Score: "+Math.floor(Engine.score),10,20);
+if(Engine.game === "pong"){
+ctx.fillText("CPU: "+Math.floor(Engine.cpu),10,40);
+} else {
+ctx.fillText("Game: "+Engine.game,10,40);
+}
+}
+
+/**************************************************
+🏠 INITIALIZE HOME SCREEN
+**************************************************/
+Engine.goHome();
+
+/**************************************************
+🧠 LOOP
+**************************************************/
+function loop(){
+Engine.update();
+render();
+requestAnimationFrame(loop);
+}
+
+loop();
+
+</script>
+
+</body>
+</html>
